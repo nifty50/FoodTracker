@@ -109,6 +109,40 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             print(response)
         }
         task.resume()*/
+        
+        var request = NSMutableURLRequest(URL: NSURL(string: "https://api.nutritionix.com/v1_1/search/")!)
+        let session = NSURLSession.sharedSession()
+        request.HTTPMethod = "POST"
+        
+        var params = [
+            "appId": kAppId,
+            "appKey": kAppKey,
+            "fields": ["item_name", "brand_name", "keywords", "usda_fields"],
+            "limit": "50",
+            "query": searchString,
+            "filter": ["exists": ["usda_fields": true]]
+        ]
+        
+        do {
+            try request.HTTPBody = NSJSONSerialization.dataWithJSONObject(params, options: [])
+        } catch let error as NSError {
+            print(error.localizedDescription)
+        }
+        
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("application/json", forHTTPHeaderField: "Accept")
+        
+        var task = session.dataTaskWithRequest(request) { (data, response, err) -> Void in
+            var stringData = NSString(data: data!, encoding: NSUTF8StringEncoding)
+            print(stringData)
+            do {
+                var jsonDictionary = try NSJSONSerialization.JSONObjectWithData(data!, options: .MutableLeaves) as? NSDictionary
+                print(jsonDictionary)
+            } catch let conversionError as NSError {
+                print(conversionError.localizedDescription)
+            }
+        }
+        task.resume()
     }
     
     
