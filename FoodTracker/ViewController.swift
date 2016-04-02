@@ -20,7 +20,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     var suggestedSearchFoods: [String] = []
     var filteredSuggestedSearchFoods: [String] = []
     
+    var apiSearchForFoods: [(name: String, idValue: String)] = []
+    
     var scopeButtonTitles = ["Recommended", "Search Results", "Saved"]
+    
+    var jsonResponse: NSDictionary!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -54,12 +58,23 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCellWithIdentifier("Cell")! as UITableViewCell
+        
         var foodName: String
-        if self.searchController.active {
-            foodName = filteredSuggestedSearchFoods[indexPath.row]
+        
+        let selectedScopeButtonIndex = self.searchController.searchBar.selectedScopeButtonIndex
+        
+        if selectedScopeButtonIndex == 0 {
+            if self.searchController.active {
+                foodName = filteredSuggestedSearchFoods[indexPath.row]
+            } else {
+                foodName = suggestedSearchFoods[indexPath.row]
+            }
+        } else if selectedScopeButtonIndex == 1 {
+            foodName = apiSearchForFoods[indexPath.row].name
         } else {
-            foodName = suggestedSearchFoods[indexPath.row]
+            foodName = ""
         }
+        
         cell.textLabel?.text = foodName
         cell.accessoryType = UITableViewCellAccessoryType.DisclosureIndicator
         
@@ -68,10 +83,18 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
-        if self.searchController.active {
-            return self.filteredSuggestedSearchFoods.count
+        let selectedScopeButtonIndex = self.searchController.searchBar.selectedScopeButtonIndex
+        
+        if selectedScopeButtonIndex == 0 {
+            if self.searchController.active {
+                return self.filteredSuggestedSearchFoods.count
+            } else {
+                return self.suggestedSearchFoods.count
+            }
+        } else if selectedScopeButtonIndex == 1 {
+            return self.apiSearchForFoods.count
         } else {
-            return self.suggestedSearchFoods.count
+            return 0
         }
         
     }
@@ -96,6 +119,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     // Mark - UISearchBarDelegate
     
     func searchBarSearchButtonClicked(searchBar: UISearchBar) {
+        self.searchController.searchBar.selectedScopeButtonIndex = 1
         makeRequest(searchBar.text!)
     }
     
@@ -110,11 +134,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
         task.resume()*/
         
-        var request = NSMutableURLRequest(URL: NSURL(string: "https://api.nutritionix.com/v1_1/search/")!)
+        let request = NSMutableURLRequest(URL: NSURL(string: "https://api.nutritionix.com/v1_1/search/")!)
         let session = NSURLSession.sharedSession()
         request.HTTPMethod = "POST"
         
-        var params = [
+        let params = [
             "appId": kAppId,
             "appKey": kAppKey,
             "fields": ["item_name", "brand_name", "keywords", "usda_fields"],
@@ -132,14 +156,26 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("application/json", forHTTPHeaderField: "Accept")
         
-        var task = session.dataTaskWithRequest(request) { (data, response, err) -> Void in
-            var stringData = NSString(data: data!, encoding: NSUTF8StringEncoding)
-            print(stringData)
+        let task = session.dataTaskWithRequest(request) { (data, response, err) -> Void in
+            //let stringData = NSString(data: data!, encoding: NSUTF8StringEncoding)
+            //print(stringData)
             do {
-                var jsonDictionary = try NSJSONSerialization.JSONObjectWithData(data!, options: .MutableLeaves) as? NSDictionary
+                let jsonDictionary = try NSJSONSerialization.JSONObjectWithData(data!, options: .MutableLeaves) as? NSDictionary
                 print(jsonDictionary)
+                if jsonDictionary != nil {
+                    self.jsonResponse = jsonDictionary
+                    self.apiSearchForFoods = DataController.jsonAsUSDAIdAndNameSearchResults(jsonDictionary!)
+                    dispatch_async(dispatch_get_main_queue(), { () -> Void in
+                        self.tableView.reloadData()
+                    })
+                } else {
+                    let errorString = NSString(data: data!, encoding: NSUTF8StringEncoding)
+                    print("Error Could not Parse JSON \(errorString)")
+                }
             } catch let conversionError as NSError {
                 print(conversionError.localizedDescription)
+                let errorString = NSString(data: data!, encoding: NSUTF8StringEncoding)
+                print("Error in Parsing \(errorString)")
             }
         }
         task.resume()
