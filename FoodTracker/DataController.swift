@@ -40,4 +40,32 @@ class DataController {
         
     }
     
+    func saveUSDAItemForId(idValue: String, json: NSDictionary) {
+        
+        if json["hits"] != nil {
+            let results: [AnyObject] = json["hits"] as! [AnyObject]
+            for itemDictionary in results {
+                if itemDictionary["_id"] != nil && itemDictionary["_id"] as! String == idValue {
+                    let managedObjectContext = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext
+                    let requestForUSDAItem = NSFetchRequest(entityName: "USDAItem")
+                    let itemDictionaryId = itemDictionary["_id"] as! String
+                    let predicate = NSPredicate(format: "idValue == %@", itemDictionaryId)
+                    requestForUSDAItem.predicate = predicate
+                    do {
+                        let items = try managedObjectContext.executeFetchRequest(requestForUSDAItem)
+                        if items.count != 0 {
+                            return
+                        } else {
+                            print("Let's save this to CoreData!")
+                        }
+                    } catch let error as NSError {
+                        print(error.localizedDescription)
+                    }
+                    
+
+                }
+            }
+        }
+        
+    }
 }
