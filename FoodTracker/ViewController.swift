@@ -53,8 +53,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.definesPresentationContext = true
         
         self.suggestedSearchFoods = ["apple", "bagel", "banana", "beer", "bread", "carrots", "cheddar cheese", "chicken breast", "chili with beans", "chocolate chip cookie", "coffee", "cola", "corn", "egg", "graham cracker", "granola bar", "green beans", "ground beef patty", "hot dog", "ice cream", "jelly doughnut", "ketchup", "milk", "mixed nuts", "mustard", "oatmeal", "orange juice", "peanut butter", "pizza", "pork chop", "potato", "potato chips", "pretzels", "raisins", "ranch salad dressing", "red wine", "rice", "salsa", "shrimp", "spaghetti", "spaghetti sauce", "tuna", "white wine", "yellow cake"]
+        
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: "usdaItemDidComplete:", name: kUSDAItemCompleted, object: nil)
     }
 
+    deinit {
+        NSNotificationCenter.defaultCenter().removeObserver(self)
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
@@ -233,7 +239,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             //print(stringData)
             do {
                 let jsonDictionary = try NSJSONSerialization.JSONObjectWithData(data!, options: .MutableLeaves) as? NSDictionary
-                print(jsonDictionary)
+                //print(jsonDictionary)
                 if jsonDictionary != nil {
                     self.jsonResponse = jsonDictionary
                     self.apiSearchForFoods = DataController.jsonAsUSDAIdAndNameSearchResults(jsonDictionary!)
@@ -262,56 +268,22 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         do {
             self.favoritedUSDAItems = try managedObjectContext.executeFetchRequest(fetchRequest) as! [USDAItem]
-            print(self.favoritedUSDAItems)
+            //print(self.favoritedUSDAItems)
         } catch let error as NSError {
             print(error.localizedDescription)
         }
     }
     
+    // Mark - NSNotificationCenter
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    func usdaItemDidComplete(notification: NSNotification) {
+        print("usdaItemDidComplete in ViewController")
+        requestFavoritedUSDAItems()
+        let selectedScopeButtonIndex = self.searchController.searchBar.selectedScopeButtonIndex
+        if selectedScopeButtonIndex == 2 {
+            self.tableView.reloadData()
+        }
+    }
 
 }
 
